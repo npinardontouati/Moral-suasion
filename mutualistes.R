@@ -32,7 +32,7 @@ files <- list.files(folder,recursive = TRUE)
 print(files)
 
 # Set up metadata matrix: i, path, flag_extract_text, flag_extract_table_1, flag_extract_table_2, checktable_1, checktable_2
-metadata <- matrix(data = NA,nrow = length(files),ncol=7)
+metadata <- matrix(data = NA,nrow = length(files),ncol=8)
 pagenbs <- matrix(data = NA,nrow = length(files),ncol=2)
 
 # Column names
@@ -79,16 +79,15 @@ table_onepage_extraction <-function(i,col) {
   
   ### Extract all tables in the PDF page
   table <- tryCatch({extract_tables(location, page = pagenb,columns=list(c(70, 180, 326, 425,524)))}, error = function(e) e)
-  j<-col+4
-  metadata[i,j] <- any(class(table) == "error")
-  metadata[i,7] <- 0L
+  flag <- any(class(table) == "error")
+  flag_length <- (length(table)>0)                  
+                    
   ### Create an emply list of datatables to store the tables of the page
-  tables <- vector(mode = "list", length = 2)
+  tables <- vector(mode = "list", length = 4)
   tables[[1]] <- NA
   tables[[2]] <- NA
-  if (metadata[i,j]==FALSE) {
+  if (flag==FALSE) {
     if (length(table)>0L) {
-      metadata[i,7] <- 1L
       ### Create data.tables that will store board tables and other tables
       rawnames <- subset(raw,i>0)
       rawothers <- subset(raw,i>0)
@@ -112,13 +111,15 @@ table_onepage_extraction <-function(i,col) {
       }
       tables[[1]] <- rawnames
       tables[[2]] <- rawothers
+      tables[[3]] <- flag
+      tables[[4]] <- flag_length
     }
   }
   return(tables)
 }
 
 #### For each PDF i, get the appropriate tables #####
-
+                    
 for (i in 1:length(files)) {
   location <- paste0(folder,"/",files[i])
   pagenb1 <- pagenbs[i,1]
@@ -128,6 +129,8 @@ for (i in 1:length(files)) {
     if (pagenb1==pagenb2) {
       tables<-table_onepage_extraction(i,1)
       names_add <- tables[[1]]
+      metadata[i,5]<-tables[[3]]
+      metadata[i,7]<-tables[[4]]
       if (is.data.table(names_add)) {
         l<-list(namesCA,names_add)
         namesCA <- rbindlist(l,use.names=TRUE,fill=TRUE,idcol=NULL)
@@ -142,6 +145,8 @@ for (i in 1:length(files)) {
       for (col in 1:2) {
         tables<-table_onepage_extraction(i,col)
         names_add <- tables[[1]]
+        metadata[i,4+col]<-tables[[3]]
+        metadata[i,6+col]<-tables[[4]]
         if (is.data.table(names_add)) {
           l<-list(namesCA,names_add)
           namesCA <- rbindlist(l,use.names=TRUE,fill=TRUE,idcol=NULL)
